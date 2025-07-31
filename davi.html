@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Coração com Movimento Fluido</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #fff0f5;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 0;
+        }
+
+        .wrapper {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            width: 100%;
+        }
+
+        .heart-container {
+            position: relative;
+            width: 500px;
+            height: 450px;
+        }
+
+        .small-heart {
+            position: absolute;
+            font-size: 16px;
+            color: red;
+            cursor: default;
+            transition: transform 0.2s ease;
+        }
+
+        .center-name {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 30px;
+            font-weight: bold;
+            color: #c20036;
+            text-shadow: 1px 1px 2px white;
+            white-space: nowrap;
+            pointer-events: auto;
+            transition: transform 0.3s ease, filter 0.3s ease;
+        }
+
+        .center-name:hover {
+            transform: translate(-50%, -50%) scale(1.2);
+            filter: drop-shadow(0 0 8px #ff1a59);
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Fundo animado -->
+    <canvas id="heartCanvas"></canvas>
+
+    <!-- Coração principal -->
+    <div class="wrapper">
+        <div class="heart-container" id="heartContainer">
+            <div class="center-name">Davi, Eu te A M O</div>
+        </div>
+    </div>
+
+    <script>
+        const container = document.getElementById("heartContainer");
+        const width = 500;
+        const height = 450;
+        const step = 0.04;
+        const scale = 14;
+        const hearts = [];
+
+        for (let t = 0; t < Math.PI * 2; t += step) {
+            const x = 16 * Math.pow(Math.sin(t), 3);
+            const y = 13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t);
+
+            const pixelX = width / 2 + x * scale;
+            const pixelY = height / 2 - y * scale;
+
+            const heart = document.createElement("div");
+            heart.className = "small-heart";
+            heart.style.left = `${pixelX}px`;
+            heart.style.top = `${pixelY}px`;
+            heart.textContent = "❤️";
+
+            container.appendChild(heart);
+
+            hearts.push({
+                el: heart,
+                originalX: pixelX,
+                originalY: pixelY,
+                currentX: pixelX,
+                currentY: pixelY,
+                targetX: pixelX,
+                targetY: pixelY
+            });
+        }
+
+        let mouseX = null;
+        let mouseY = null;
+
+        document.addEventListener("mousemove", (e) => {
+            const rect = container.getBoundingClientRect();
+            mouseX = e.clientX - rect.left;
+            mouseY = e.clientY - rect.top;
+        });
+
+        function lerp(a, b, t) {
+            return a + (b - a) * t;
+        }
+
+        function animateHearts() {
+            hearts.forEach(h => {
+                if (mouseX !== null && mouseY !== null) {
+                    const dx = mouseX - h.originalX;
+                    const dy = mouseY - h.originalY;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+
+                    if (dist < 60) {
+                        const angle = Math.atan2(dy, dx);
+                        const force = (60 - dist) / 60;
+                        const magnitude = force * 30;
+
+                        h.targetX = h.originalX - Math.cos(angle) * magnitude;
+                        h.targetY = h.originalY - Math.sin(angle) * magnitude;
+
+                        h.el.style.transform = `scale(1.4) rotate(${angle * 0.3}rad)`;
+                    } else {
+                        h.targetX = h.originalX;
+                        h.targetY = h.originalY;
+                        h.el.style.transform = `scale(1) rotate(0)`;
+                    }
+                }
+
+                // Aplicar movimento suave
+                h.currentX = lerp(h.currentX, h.targetX, 0.1);
+                h.currentY = lerp(h.currentY, h.targetY, 0.1);
+                h.el.style.left = `${h.currentX}px`;
+                h.el.style.top = `${h.currentY}px`;
+            });
+
+            requestAnimationFrame(animateHearts);
+        }
+
+        animateHearts();
+
+        // Fundo de corações caindo
+        const canvas = document.getElementById("heartCanvas");
+        const ctx = canvas.getContext("2d");
+        let fallingHearts = [];
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+
+        function createFallingHeart() {
+            return {
+                x: Math.random() * canvas.width,
+                y: Math.random() * -canvas.height,
+                speed: 0.5 + Math.random() * 1.5,
+                size: 16 + Math.random() * 10,
+                opacity: 0.5 + Math.random() * 0.5
+            };
+        }
+
+        function drawFallingHeart(x, y, size, opacity) {
+            ctx.font = `${size}px Arial`;
+            ctx.globalAlpha = opacity;
+            ctx.fillText("❤️", x, y);
+            ctx.globalAlpha = 1;
+        }
+
+        function updateFallingHearts() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            fallingHearts.forEach(heart => {
+                heart.y += heart.speed;
+                drawFallingHeart(heart.x, heart.y, heart.size, heart.opacity);
+
+                if (heart.y > canvas.height + 20) {
+                    heart.x = Math.random() * canvas.width;
+                    heart.y = -20;
+                }
+            });
+            requestAnimationFrame(updateFallingHearts);
+        }
+
+        resizeCanvas();
+        for (let i = 0; i < 100; i++) {
+            fallingHearts.push(createFallingHeart());
+        }
+        updateFallingHearts();
+        window.addEventListener("resize", resizeCanvas);
+    </script>
+
+</body>
+
+</html>
